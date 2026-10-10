@@ -40,13 +40,13 @@ OUR_PID=$!
 
 cleanup() {
   kill "$OUR_PID" 2>/dev/null || true
-  "$TOOLS/redis-cli" -p "$REAL_PORT" shutdown nosave 2>/dev/null || true
+  redis_cli -p "$REAL_PORT" shutdown nosave 2>/dev/null || true
 }
 trap cleanup EXIT
 
 wait_for() {
   for _ in $(seq 1 50); do
-    if "$TOOLS/redis-cli" -p "$1" ping 2>/dev/null | grep -q PONG; then
+    if redis_cli -p "$1" ping 2>/dev/null | grep -q PONG; then
       return 0
     fi
     sleep 0.1
@@ -60,9 +60,9 @@ wait_for "$OUR_PORT"
 run_case() {
   local label="$1"; shift
   echo "-- $label"
-  REAL_RPS=$("$TOOLS/redis-benchmark" -p "$REAL_PORT" -n 100000 -c 50 -q "$@" \
+  REAL_RPS=$(redis_benchmark -p "$REAL_PORT" -n 100000 -c 50 -q "$@" \
     | tr '\r' '\n' | grep -o '[0-9][0-9.]* requests per second' | head -1 | awk '{print $1}')
-  OUR_RPS=$("$TOOLS/redis-benchmark" -p "$OUR_PORT" -n 100000 -c 50 -q "$@" \
+  OUR_RPS=$(redis_benchmark -p "$OUR_PORT" -n 100000 -c 50 -q "$@" \
     | tr '\r' '\n' | grep -o '[0-9][0-9.]* requests per second' | head -1 | awk '{print $1}')
   RATIO=$(awk "BEGIN {printf \"%.0f\", ($OUR_RPS/$REAL_RPS)*100}")
   printf '%-22s real=%10s/s  ours=%10s/s  ours/real=%s%%\n' \

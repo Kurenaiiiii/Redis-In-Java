@@ -1,0 +1,11 @@
+services:
+  redis-in-java:
+    build: .
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/app/data
+    command: ["--port", "6379", "--appendonly", "yes", "--aof-file", "/app/data/appendonly.aof"]
+
+volumes:
+  redis-data:
