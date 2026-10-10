@@ -1,0 +1,10 @@
+target/
+.idea/
+*.iml
+*.class
+*.aof
+*.aof.tmp
+dump.rdb
+.tools/
+*.log
+.DS_Store
