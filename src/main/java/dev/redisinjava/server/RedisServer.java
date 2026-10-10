@@ -230,17 +230,28 @@ public final class RedisServer implements PubSub.PubSubMessenger {
             return;
         }
         Command command = registry.lookup(name);
-        if (command == null) {
-            conn.send(unknownCommand(argv));
-            return;
-        }
         if (conn.inMulti() && !(command instanceof TxnControl)) {
+            // Queue-time errors dirty the transaction: EXEC then fails.
+            if (command == null) {
+                conn.send(unknownCommand(argv));
+                conn.markTxnDirty();
+                return;
+            }
             if (name.equals("watch") || name.equals("unwatch")) {
                 conn.send(RespValue.err("ERR WATCH inside MULTI is not allowed"));
+                conn.markTxnDirty();
+                return;
+            }
+            if (!checkArity(conn, command, argv)) {
+                conn.markTxnDirty();
                 return;
             }
             conn.enqueueTxn(argv);
             conn.send(RespValue.queued());
+            return;
+        }
+        if (command == null) {
+            conn.send(unknownCommand(argv));
             return;
         }
         if (!checkArity(conn, command, argv)) {
@@ -259,7 +270,7 @@ public final class RedisServer implements PubSub.PubSubMessenger {
             reply = RespValue.err("ERR internal error");
         }
         if (reply == null) {
-            reply = RespValue.err("ERR internal error: nil reply");
+            return; // command already wrote its replies (multi-message commands)
         }
         if (command.isWrite() && !(reply instanceof RespValue.Error)) {
             aof.log(argv);

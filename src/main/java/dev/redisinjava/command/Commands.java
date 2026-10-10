@@ -30,6 +30,11 @@ import dev.redisinjava.command.sets.SaddCommand;
 import dev.redisinjava.command.sets.ScardCommand;
 import dev.redisinjava.command.sets.SismemberCommand;
 import dev.redisinjava.command.sets.SmembersCommand;
+import dev.redisinjava.command.pubsub.PsubscribeCommand;
+import dev.redisinjava.command.pubsub.PublishCommand;
+import dev.redisinjava.command.pubsub.PunsubscribeCommand;
+import dev.redisinjava.command.pubsub.SubscribeCommand;
+import dev.redisinjava.command.pubsub.UnsubscribeCommand;
 import dev.redisinjava.command.sets.SremCommand;
 import dev.redisinjava.command.zsets.ZaddCommand;
 import dev.redisinjava.command.zsets.ZcardCommand;
@@ -49,6 +54,11 @@ import dev.redisinjava.command.strings.MgetCommand;
 import dev.redisinjava.command.strings.MsetCommand;
 import dev.redisinjava.command.strings.SetCommand;
 import dev.redisinjava.command.strings.StrlenCommand;
+import dev.redisinjava.command.transactions.DiscardCommand;
+import dev.redisinjava.command.transactions.ExecCommand;
+import dev.redisinjava.command.transactions.MultiCommand;
+import dev.redisinjava.command.transactions.UnwatchCommand;
+import dev.redisinjava.command.transactions.WatchCommand;
 
 /**
  * Registers every command. Add one line here per new command class; the
@@ -109,6 +119,16 @@ public final class Commands {
         registry.register(new ZrankCommand());
         registry.register(new ZrangeCommand());
         registry.register(new ZrangebyscoreCommand());
+        registry.register(new MultiCommand());
+        registry.register(new ExecCommand());
+        registry.register(new DiscardCommand());
+        registry.register(new WatchCommand());
+        registry.register(new UnwatchCommand());
+        registry.register(new SubscribeCommand());
+        registry.register(new UnsubscribeCommand());
+        registry.register(new PsubscribeCommand());
+        registry.register(new PunsubscribeCommand());
+        registry.register(new PublishCommand());
         return registry;
     }
 }

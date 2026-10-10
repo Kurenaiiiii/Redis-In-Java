@@ -102,6 +102,11 @@ public final class ServerHarness implements AutoCloseable {
             return readReply();
         }
 
+        /** Reads one server-pushed message (pub/sub delivery). */
+        public Object read() throws IOException {
+            return readReply();
+        }
+
         private int readByte() throws IOException {
             int next = in.read();
             if (next < 0) {

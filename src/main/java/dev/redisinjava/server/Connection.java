@@ -30,6 +30,7 @@ public final class Connection {
     private boolean closeAfterDrain;
 
     private boolean inMulti;
+    private boolean txnDirty;
     private final List<List<String>> txnQueue = new ArrayList<>();
     private Map<String, Long> watched;
 
@@ -126,6 +127,19 @@ public final class Connection {
     public void abortTxn() {
         txnQueue.clear();
         inMulti = false;
+    }
+
+    /** Queueing saw an error; EXEC must fail with EXECABORT. */
+    public void markTxnDirty() {
+        txnDirty = true;
+    }
+
+    public boolean isTxnDirty() {
+        return txnDirty;
+    }
+
+    public void clearTxnDirty() {
+        txnDirty = false;
     }
 
     public void watch(Map<String, Long> versions) {
