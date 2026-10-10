@@ -25,6 +25,11 @@ public final class ServerConfig {
         return port;
     }
 
+    /** Overrides the listen port; used by tests to bind an ephemeral port. */
+    public void setPort(int port) {
+        this.port = port;
+    }
+
     public boolean appendOnly() {
         return appendOnly;
     }

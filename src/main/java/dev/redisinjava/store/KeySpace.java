@@ -79,6 +79,15 @@ public final class KeySpace {
         bumpVersion(key);
     }
 
+    /** Stores a value, dropping any previous TTL (plain SET semantics). */
+    /** Stores a value, dropping any previous TTL (plain SET semantics). */
+    public void overwrite(String key, RedisValue value) {
+        delete(key);
+        data.put(key, new Entry(value, -1, System.nanoTime()));
+        usedMemoryBytes += key.length() + 32 + value.estimateSize();
+        bumpVersion(key);
+    }
+
     /** Removes a key; true when something was actually deleted. */
     public boolean delete(String key) {
         Entry entry = data.get(key);
