@@ -107,6 +107,19 @@ public final class ServerHarness implements AutoCloseable {
 
         /** Sends argv and returns the reply: String, Long, List, null, or RedisError. */
         public Object cmd(String... argv) throws IOException {
+            send(argv);
+            return readReply();
+        }
+
+        /** Sends several commands without reading: tests pipelining. */
+        public void sendMany(String[]... batch) throws IOException {
+            for (String[] argv : batch) {
+                send(argv);
+            }
+            out.flush();
+        }
+
+        private void send(String... argv) throws IOException {
             StringBuilder head = new StringBuilder("*").append(argv.length).append("\r\n");
             out.write(head.toString().getBytes(StandardCharsets.UTF_8));
             for (String arg : argv) {
@@ -116,7 +129,6 @@ public final class ServerHarness implements AutoCloseable {
                 out.write("\r\n".getBytes(StandardCharsets.US_ASCII));
             }
             out.flush();
-            return readReply();
         }
 
         /** Reads one server-pushed message (pub/sub delivery). */
