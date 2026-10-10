@@ -31,6 +31,13 @@ import dev.redisinjava.command.sets.ScardCommand;
 import dev.redisinjava.command.sets.SismemberCommand;
 import dev.redisinjava.command.sets.SmembersCommand;
 import dev.redisinjava.command.sets.SremCommand;
+import dev.redisinjava.command.zsets.ZaddCommand;
+import dev.redisinjava.command.zsets.ZcardCommand;
+import dev.redisinjava.command.zsets.ZrangeCommand;
+import dev.redisinjava.command.zsets.ZrangebyscoreCommand;
+import dev.redisinjava.command.zsets.ZrankCommand;
+import dev.redisinjava.command.zsets.ZremCommand;
+import dev.redisinjava.command.zsets.ZscoreCommand;
 import dev.redisinjava.command.strings.AppendCommand;
 import dev.redisinjava.command.strings.DecrCommand;
 import dev.redisinjava.command.strings.DelCommand;
@@ -95,6 +102,13 @@ public final class Commands {
         registry.register(new SmembersCommand());
         registry.register(new SismemberCommand());
         registry.register(new ScardCommand());
+        registry.register(new ZaddCommand());
+        registry.register(new ZremCommand());
+        registry.register(new ZscoreCommand());
+        registry.register(new ZcardCommand());
+        registry.register(new ZrankCommand());
+        registry.register(new ZrangeCommand());
+        registry.register(new ZrangebyscoreCommand());
         return registry;
     }
 }
