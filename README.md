@@ -55,55 +55,64 @@ Requirements: a full JDK 21+ (`javac` included — a JRE alone cannot compile) a
 
 ## Usage
 
-Start the server, then use the official CLI exactly as with real Redis:
+Start the server (`--port 6379` is the default), then use the official CLI exactly as with real Redis:
 
 ```
-$ redis-cli -p 6399 set leaderboard:game1 "season 9"
+127.0.0.1:6379> set leaderboard:game1 "season 9"
 OK
-$ redis-cli -p 6399 zadd leaderboard 1500 alice 2300 bob 1800 carol
+127.0.0.1:6379> zadd leaderboard 1500 alice 2300 bob 1800 carol
 (integer) 3
-$ redis-cli -p 6399 zrange leaderboard 0 -1 withscores
+127.0.0.1:6379> zrange leaderboard 0 -1 withscores
 1) "alice"
 2) "1500"
 3) "carol"
 4) "1800"
 5) "bob"
 6) "2300"
-$ redis-cli -p 6399 hset user:42 name ada score 2300
+127.0.0.1:6379> hset user:42 name ada score 2300
 (integer) 2
-$ redis-cli -p 6399 hgetall user:42
+127.0.0.1:6379> hgetall user:42
 1) "name"
 2) "ada"
 3) "score"
 4) "2300"
-$ redis-cli -p 6399 expire user:42 3600
+127.0.0.1:6379> expire user:42 3600
 (integer) 1
-$ redis-cli -p 6399 ttl user:42
-(integer) 3599
+127.0.0.1:6379> ttl user:42
+(integer) 3600
 ```
 
-Transactions and pub/sub work too:
+Transactions run on a single connection, so this is one interactive session:
 
 ```
-$ redis-cli -p 6399 multi
+127.0.0.1:6379> multi
 OK
-$ redis-cli -p 6399 set a 1
+127.0.0.1:6379> set a 1
 QUEUED
-$ redis-cli -p 6399 incr n
+127.0.0.1:6379> incr n
 QUEUED
-$ redis-cli -p 6399 exec
+127.0.0.1:6379> exec
 1) OK
 2) (integer) 1
 ```
 
+Pub/sub needs two connections — a subscriber terminal and a publisher terminal:
+
 ```
-$ redis-cli -p 6399 subscribe news
+# terminal 1: subscriber
+127.0.0.1:6379> subscribe news
 1) "subscribe"
 2) "news"
 3) (integer) 1
 1) "message"
 2) "news"
 3) "hello"
+```
+
+```
+# terminal 2: publisher
+127.0.0.1:6379> publish news hello
+(integer) 1
 ```
 
 Persistence across restarts:
