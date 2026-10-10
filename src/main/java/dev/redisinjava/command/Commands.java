@@ -1,6 +1,7 @@
 package dev.redisinjava.command;
 
 import dev.redisinjava.command.connection.CommandCmd;
+import dev.redisinjava.command.connection.ConfigCommand;
 import dev.redisinjava.command.connection.EchoCommand;
 import dev.redisinjava.command.connection.InfoCommand;
 import dev.redisinjava.command.connection.PingCommand;
@@ -76,6 +77,7 @@ public final class Commands {
         registry.register(new EchoCommand());
         registry.register(new QuitCommand());
         registry.register(new CommandCmd());
+        registry.register(new ConfigCommand());
         registry.register(new InfoCommand());
         registry.register(new SelectCommand());
         registry.register(new SetCommand());
