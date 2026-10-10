@@ -333,6 +333,14 @@ public final class RedisServer implements PubSub.PubSubMessenger {
 
     private void secondly() {
         aof.everySecond();
+        if (config.appendOnly() && aof.shouldRewrite(
+                config.autoRewritePercentage(), config.autoRewriteMinSize())) {
+            try {
+                aof.rewrite(keySpace);
+            } catch (IOException e) {
+                Log.error("Automatic AOF rewrite failed: " + e.getMessage());
+            }
+        }
         if (config.timeoutSeconds() > 0) {
             for (Connection conn : new ArrayList<>(connections)) {
                 if (!conn.isSubscribed() && conn.idleSeconds() >= config.timeoutSeconds()) {

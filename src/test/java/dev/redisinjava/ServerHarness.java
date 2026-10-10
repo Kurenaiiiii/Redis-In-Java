@@ -23,6 +23,7 @@ import java.util.List;
  */
 public final class ServerHarness implements AutoCloseable {
     private final RedisServer server;
+    private final AofLogger aof;
     private final Thread thread;
     private final int port;
 
@@ -31,13 +32,23 @@ public final class ServerHarness implements AutoCloseable {
     }
 
     public ServerHarness(ServerConfig config) throws IOException {
+        this(config, java.nio.file.Path.of("target/test-" + System.nanoTime() + ".aof"), false);
+    }
+
+    public ServerHarness(ServerConfig config, java.nio.file.Path aofPath, boolean appendOnly)
+            throws IOException {
         config.setPort(0); // ephemeral port, read back via server.port()
         KeySpace keySpace = new KeySpace();
         PubSub pubSub = new PubSub();
-        AofLogger aof = new AofLogger(
-                java.nio.file.Path.of("target/test-" + System.nanoTime() + ".aof"),
-                FlushPolicy.NO, false);
-        server = new RedisServer(config, keySpace, pubSub, aof, Commands.all());
+        AofLogger aof = new AofLogger(aofPath, FlushPolicy.EVERYSEC, appendOnly);
+        this.aof = aof;
+        CommandRegistry registry = Commands.all();
+        server = new RedisServer(config, keySpace, pubSub, aof, registry);
+        if (appendOnly) {
+            AofLogger.replay(aofPath,
+                    argv -> Main.replayOne(server, registry, keySpace, pubSub, aof, config, argv));
+            aof.baseNow();
+        }
         thread = new Thread(() -> {
             try {
                 server.start();
@@ -73,6 +84,11 @@ public final class ServerHarness implements AutoCloseable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        try {
+            aof.flush();
+        } finally {
+            aof.close();
+        }
     }
 
     /** Minimal blocking RESP client for tests. */
@@ -83,6 +99,7 @@ public final class ServerHarness implements AutoCloseable {
 
         TestClient(int port) throws IOException {
             socket = new Socket("127.0.0.1", port);
+            socket.setTcpNoDelay(true); // like redis-cli: no Nagle stalls
             socket.setSoTimeout(10000);
             in = socket.getInputStream();
             out = socket.getOutputStream();

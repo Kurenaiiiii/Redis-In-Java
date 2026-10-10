@@ -17,6 +17,7 @@ import dev.redisinjava.command.keys.FlushallCommand;
 import dev.redisinjava.command.keys.KeysCommand;
 import dev.redisinjava.command.keys.PersistCommand;
 import dev.redisinjava.command.keys.PexpireCommand;
+import dev.redisinjava.command.keys.PexpireatCommand;
 import dev.redisinjava.command.keys.PttlCommand;
 import dev.redisinjava.command.keys.TtlCommand;
 import dev.redisinjava.command.keys.TypeCommand;
@@ -30,6 +31,7 @@ import dev.redisinjava.command.sets.SaddCommand;
 import dev.redisinjava.command.sets.ScardCommand;
 import dev.redisinjava.command.sets.SismemberCommand;
 import dev.redisinjava.command.sets.SmembersCommand;
+import dev.redisinjava.command.persistence.BgrewriteaofCommand;
 import dev.redisinjava.command.pubsub.PsubscribeCommand;
 import dev.redisinjava.command.pubsub.PublishCommand;
 import dev.redisinjava.command.pubsub.PunsubscribeCommand;
@@ -129,6 +131,8 @@ public final class Commands {
         registry.register(new PsubscribeCommand());
         registry.register(new PunsubscribeCommand());
         registry.register(new PublishCommand());
+        registry.register(new PexpireatCommand());
+        registry.register(new BgrewriteaofCommand());
         return registry;
     }
 }

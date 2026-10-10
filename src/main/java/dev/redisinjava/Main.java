@@ -50,7 +50,6 @@ public final class Main {
                     argv -> replayOne(server, registry, keySpace, pubSub, aof, config, argv));
             aof.baseNow();
         }
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             Log.info("Shutting down...");
             server.stop();

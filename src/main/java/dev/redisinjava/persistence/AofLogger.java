@@ -2,6 +2,14 @@ package dev.redisinjava.persistence;
 
 import dev.redisinjava.protocol.RespEncoder;
 import dev.redisinjava.protocol.RespValue;
+import dev.redisinjava.store.KeySpace;
+import dev.redisinjava.store.RedisHashValue;
+import dev.redisinjava.store.RedisListValue;
+import dev.redisinjava.store.RedisSetValue;
+import dev.redisinjava.store.RedisStringValue;
+import dev.redisinjava.store.RedisValue;
+import dev.redisinjava.store.RedisZSetValue;
+import dev.redisinjava.store.SkipList;
 import dev.redisinjava.util.Log;
 import dev.redisinjava.util.Raw;
 import java.io.BufferedOutputStream;
@@ -13,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -26,6 +35,7 @@ public final class AofLogger {
     private boolean enabled;
     private OutputStream out;
     private long bytesSinceBase;
+    private long baseSize;
 
     public AofLogger(Path path, FlushPolicy policy, boolean enabled) {
         this.path = path;
@@ -77,11 +87,11 @@ public final class AofLogger {
             byte[] encoded = RespEncoder.encode(RespValue.array(items));
             out.write(encoded);
             bytesSinceBase += encoded.length;
+            // everysec/no hand data to the OS on every command and only differ
+            // in fsync cadence; always fsyncs inline for full durability.
+            out.flush();
             if (policy == FlushPolicy.ALWAYS) {
-                out.flush();
                 fsync();
-            } else if (policy == FlushPolicy.NO) {
-                out.flush();
             }
         } catch (IOException e) {
             Log.error("AOF write failed: " + e.getMessage());
@@ -125,6 +135,114 @@ public final class AofLogger {
 
     public synchronized void baseNow() {
         bytesSinceBase = 0;
+        baseSize = fileSize();
+    }
+
+    public synchronized long baseSize() {
+        return baseSize;
+    }
+
+    /** True when growth since the base exceeds the configured thresholds. */
+    public synchronized boolean shouldRewrite(int percentage, long minSize) {
+        long size = fileSize();
+        if (size < minSize) {
+            return false;
+        }
+        if (baseSize == 0) {
+            return size > 0;
+        }
+        return (size - baseSize) * 100L / baseSize >= percentage;
+    }
+
+    /**
+     * Rewrites the log to the minimal command sequence recreating the live
+     * dataset. Runs synchronously on the event-loop thread (real Redis forks
+     * instead); the file is replaced atomically via rename, and writes
+     * cannot interleave because the loop is blocked meanwhile.
+     */
+    public synchronized void rewrite(KeySpace keySpace) throws IOException {
+        Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
+        long keys = 0;
+        try (OutputStream tmpOut = new BufferedOutputStream(Files.newOutputStream(tmp,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
+            for (String key : keySpace.keys("*")) {
+                RedisValue value = keySpace.peek(key);
+                if (value == null) {
+                    continue;
+                }
+                writeCommand(tmpOut, minimalCommands(key, value));
+                long expireAt = keySpace.expireAt(key);
+                if (expireAt >= 0) {
+                    writeCommand(tmpOut,
+                            List.of(List.of("PEXPIREAT", key, Long.toString(expireAt))));
+                }
+                keys++;
+            }
+            tmpOut.flush();
+        }
+        if (out != null) {
+            out.flush();
+            out.close();
+            out = null;
+        }
+        Files.move(tmp, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        if (enabled) {
+            open();
+        }
+        baseNow();
+        Log.info("AOF rewrite compacted " + keys + " keys");
+    }
+
+    /** Minimal write commands recreating one key. */
+    private static List<List<String>> minimalCommands(String key, RedisValue value) {
+        return switch (value.type()) {
+            case STRING -> List.of(List.of("SET", key,
+                    Raw.decode(((RedisStringValue) value).data())));
+            case LIST -> {
+                List<String> cmd = new ArrayList<>(List.of("RPUSH", key));
+                for (byte[] item : ((RedisListValue) value).items()) {
+                    cmd.add(Raw.decode(item));
+                }
+                yield List.of(cmd);
+            }
+            case HASH -> {
+                List<String> cmd = new ArrayList<>(List.of("HSET", key));
+                for (Map.Entry<String, byte[]> field
+                        : ((RedisHashValue) value).fields().entrySet()) {
+                    cmd.add(field.getKey());
+                    cmd.add(Raw.decode(field.getValue()));
+                }
+                yield List.of(cmd);
+            }
+            case SET -> {
+                List<String> cmd = new ArrayList<>(List.of("SADD", key));
+                cmd.addAll(((RedisSetValue) value).members());
+                yield List.of(cmd);
+            }
+            case ZSET -> {
+                List<String> cmd = new ArrayList<>(List.of("ZADD", key));
+                RedisZSetValue zset = (RedisZSetValue) value;
+                for (SkipList.Entry entry
+                        : zset.skiplist().rangeByRank(0, -1)) {
+                    cmd.add(Double.toString(entry.score()));
+                    cmd.add(entry.member());
+                }
+                yield List.of(cmd);
+            }
+            default -> List.of();
+        };
+    }
+
+    private static void writeCommand(OutputStream tmpOut, List<List<String>> commands)
+            throws IOException {
+        for (List<String> argv : commands) {
+            List<RespValue> items = new ArrayList<>(argv.size());
+            for (String arg : argv) {
+                items.add(RespValue.bulk(Raw.encode(arg)));
+            }
+            tmpOut.write(RespEncoder.encode(RespValue.array(items)));
+        }
     }
 
     public synchronized void close() {
