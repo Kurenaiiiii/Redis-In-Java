@@ -1,0 +1,42 @@
+name: Bug report
+description: Something behaves differently from real Redis, or the server misbehaves.
+labels: [bug]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+      description: Exact redis-cli input and output (or test name).
+      placeholder: |
+        $ redis-cli -p 6379 zadd myz nan m
+        (error) ERR value is not a valid float
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What does real Redis do for the same input?
+      placeholder: |
+        $ redis-cli -p 6379 zadd myz nan m
+        (error) ERR value is not a valid float
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.1.0 (commit hash if built from source)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant server log lines
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I reproduced this on the latest main branch.
+          required: true
